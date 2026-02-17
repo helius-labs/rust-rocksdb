@@ -20,9 +20,11 @@ use std::ptr::NonNull;
 use std::{ffi::CString, marker::PhantomData, path::Path};
 
 /// SstFileReader is used to read sst files that are created by SstFileWriter.
-pub struct SstFileReader {
+pub struct SstFileReader<'a> {
     pub(crate) inner: *mut ffi::rocksdb_sstfilereader_t,
-    options: Options,
+    // Options are needed to be alive when calling open(),
+    // so let's make sure it doesn't get, dropped for the lifetime of SstFileReader.
+    phantom: PhantomData<&'a Options>,
 }
 
 unsafe impl Send for SstFileReader {}
@@ -30,10 +32,10 @@ unsafe impl Sync for SstFileReader {}
 
 impl SstFileReader {
     /// Initializes SstFileReader with given DB options.
-    pub fn create(opts: Options) -> Self {
+    pub fn create(opts: &Options) -> Self {
         Self {
             inner: unsafe { ffi::rocksdb_sstfilereader_create(opts.inner) },
-            options: opts,
+            phantom: PhantomData,
         }
     }
 
